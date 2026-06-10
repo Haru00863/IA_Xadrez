@@ -1,6 +1,0 @@
-Projeto Interdisciplinar (estágio 2)
-
-
-## Como rodar o teste de mapeamento:
-1. Instale a dependência: `pip install python-chess`
-2. Execute: `python src/core/core_logic.py`
