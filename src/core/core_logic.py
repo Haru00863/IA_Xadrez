@@ -16,7 +16,6 @@ class ChessBoardCore:
         return matriz
 
     def executar_movimento(self, pgn_move):
-        """Executa um movimento e retorna True se for válido."""
         try:
             self.board.push_san(pgn_move)
             return True
