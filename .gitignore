@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.venv/
+
+# Banco SQLite gerado em tempo de execucao (dados locais de cada maquina)
+src/persistence/xadrez.db
