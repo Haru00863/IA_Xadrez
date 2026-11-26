@@ -27,6 +27,17 @@ def formatar_data(texto_utc: Optional[str]) -> str:
     return data.astimezone().strftime("%d/%m/%Y %H:%M")
 
 
+def descrever_lances(meios_lances: int, adjetivo: str = "") -> str:
+    """'1 lance salvo' / '3 lances salvos', contando lances completos como a lista.
+
+    O adjetivo (opcional, no singular) também vai para o plural quando precisa.
+    """
+    n = ChessBoardCore.lances_completos(meios_lances)
+    plural = "" if n == 1 else "s"
+    texto = f"{n} lance{plural}"
+    return f"{texto} {adjetivo}{plural}" if adjetivo else texto
+
+
 def _tag_base(numero: int) -> str:
     return "par" if numero % 2 == 0 else "impar"
 
@@ -149,7 +160,7 @@ class JanelaHistorico(tk.Toplevel):
             tags = ("andamento",) if p["resultado"] == banco.RESULTADO_EM_ANDAMENTO else ()
             self._arvore.insert("", "end", iid=iid, tags=tags, values=(
                 p["id"], formatar_data(p["data_inicio"]), p["dificuldade_ia"] or "-",
-                p["resultado"] or "-", p["total_lances"]))
+                p["resultado"] or "-", ChessBoardCore.lances_completos(p["total_lances"])))
         if not partidas and not self._vazio.cget("text"):
             self._vazio.configure(text="Nenhuma partida registrada ainda. As partidas jogadas "
                                        "na interface aparecem aqui automaticamente.")

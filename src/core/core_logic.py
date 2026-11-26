@@ -163,6 +163,15 @@ class ChessBoardCore:
     def total_meios_lances(self) -> int:
         return len(self.board.move_stack)
 
+    @staticmethod
+    def lances_completos(meios_lances: int) -> int:
+        """Converte meios-lances em lances completos (1. e4 e5 = 1 lance)."""
+        return (meios_lances + 1) // 2
+
+    def numero_do_lance(self) -> int:
+        """Número do lance completo atual, como na lista (1. e4 e5): 0 sem lances."""
+        return self.lances_completos(len(self.board.move_stack))
+
     def lances_san(self) -> list[str]:
         tabuleiro = self.board.root()
         san = []

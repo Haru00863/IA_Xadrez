@@ -22,8 +22,8 @@ from src.persistence import database_manager as banco
 from . import tema
 from .dialogos import (SEM_IA, ConfiguracaoPartida, DialogoAtalhos, DialogoNovaPartida,
                        DialogoPromocao)
-from .historico import (JanelaHistorico, criar_lista_lances, formatar_data, marcar_linha_atual,
-                        preencher_lances)
+from .historico import (JanelaHistorico, criar_lista_lances, descrever_lances, formatar_data,
+                        marcar_linha_atual, preencher_lances)
 from .sprites import Sprites
 from .tabuleiro import TabuleiroCanvas
 
@@ -267,7 +267,7 @@ class AplicacaoXadrez:
                 "Continuar partida?",
                 f"A partida nº {pendente['id']}, iniciada em "
                 f"{formatar_data(pendente['data_inicio'])}, não foi finalizada "
-                f"({pendente['total_lances']} lances salvos).\n\n"
+                f"({descrever_lances(pendente['total_lances'], 'salvo')}).\n\n"
                 "Deseja continuar de onde parou?\n\n"
                 "Se escolher Não, ela será marcada como abandonada no histórico.",
                 parent=self.raiz)
@@ -315,8 +315,8 @@ class AplicacaoXadrez:
 
         numero = f"nº {partida_id}" if partida_id else "sem registro"
         if retomada:
-            self._mensagem(f"Partida {numero} retomada com {self.jogo.total_meios_lances()} "
-                           "lances.")
+            self._mensagem(f"Partida {numero} retomada com "
+                           f"{descrever_lances(self.jogo.total_meios_lances())}.")
         else:
             self._mensagem(f"Partida {numero} iniciada. "
                            + ("Você joga com as " + config.cor_humano + "."
@@ -361,7 +361,7 @@ class AplicacaoXadrez:
         config = DialogoNovaPartida(
             self.raiz, self.fontes, titulo=f"Continuar partida nº {partida_id}",
             texto_botao="Continuar partida", inicial=inicial,
-            aviso=f"{len(lances)} lances salvos. Confirme o adversário e a sua cor "
+            aviso=f"{descrever_lances(len(lances), 'salvo')}. Confirme o adversário e a sua cor "
                   "para retomar de onde parou.").perguntar()
         if config is None:
             return False
@@ -671,12 +671,14 @@ class AplicacaoXadrez:
             self.lbl_salvo.configure(text="Sem salvamento (banco indisponível)",
                                      foreground=tema.ERRO)
             return
-        total = self.jogo.total_meios_lances()
+        numero = self.jogo.numero_do_lance()
         if agora:
             hora = datetime.now().strftime("%H:%M:%S")
-            texto = f"Lance {total} salvo automaticamente às {hora}"
+            texto = f"Lance {numero} salvo automaticamente às {hora}"
+        elif numero:
+            texto = descrever_lances(self.jogo.total_meios_lances(), "salvo")
         else:
-            texto = f"{total} lances salvos" if total else "Salvamento automático ativo"
+            texto = "Salvamento automático ativo"
         self.lbl_salvo.configure(text=texto, foreground=tema.TINTA_SUAVE)
 
     def _atualizar_tela(self) -> None:
@@ -686,7 +688,7 @@ class AplicacaoXadrez:
                                  xeque=self.jogo.casa_rei_em_xeque())
         lances = self.jogo.lances_san()
         preencher_lances(self.lista_lances, lances)
-        marcar_linha_atual(self.lista_lances, (len(lances) + 1) // 2 if lances else None)
+        marcar_linha_atual(self.lista_lances, self.jogo.numero_do_lance() or None)
         self._atualizar_cartoes()
         self._atualizar_painel_estado()
         self._atualizar_botoes()
@@ -729,7 +731,7 @@ class AplicacaoXadrez:
             self.lbl_partida.configure(text=f"Partida nº {self.partida_id}")
         else:
             self.lbl_partida.configure(text="Partida sem registro")
-        modo = (f"Contra o computador ({self.motor.nome})" if self.config.contra_ia and self.motor
+        modo = (f"Contra o computador: {self.motor.nome}" if self.config.contra_ia and self.motor
                 else "Dois jogadores no mesmo computador")
         inicio = f"Iniciada em {formatar_data(self.data_inicio)}\n" if self.data_inicio else ""
         self.lbl_detalhes.configure(text=f"{inicio}{modo}")

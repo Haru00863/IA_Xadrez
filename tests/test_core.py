@@ -124,6 +124,16 @@ class TestMovimentos(unittest.TestCase):
         self.assertFalse(resultado.valido)
         self.assertEqual(self.jogo.total_meios_lances(), 0)
 
+    def test_lances_completos(self):
+        for meios, completos in [(0, 0), (1, 1), (2, 1), (5, 3), (6, 3)]:
+            self.assertEqual(ChessBoardCore.lances_completos(meios), completos)
+
+    def test_numero_do_lance_conta_lances_completos(self):
+        self.assertEqual(self.jogo.numero_do_lance(), 0)
+        for lance, esperado in [("e4", 1), ("e5", 1), ("Nf3", 2)]:
+            self.jogo.executar_movimento(lance)
+            self.assertEqual(self.jogo.numero_do_lance(), esperado)
+
     def test_historico_e_reproducao(self):
         lances = ["e4", "e5", "Nf3", "Nc6", "Bb5"]
         for lance in lances:

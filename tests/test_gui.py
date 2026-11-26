@@ -27,6 +27,22 @@ def _criar_raiz():
         raise unittest.SkipTest(f"sem tela gráfica disponível: {erro}")
 
 
+class TestTextos(unittest.TestCase):
+    """Textos que contam lances: devem usar lances completos, como a lista."""
+
+    def setUp(self):
+        if tk is None:
+            raise unittest.SkipTest("tkinter não está instalado")
+
+    def test_descrever_lances(self):
+        from src.gui.historico import descrever_lances
+        self.assertEqual(descrever_lances(0), "0 lances")
+        self.assertEqual(descrever_lances(1, "salvo"), "1 lance salvo")
+        self.assertEqual(descrever_lances(2, "salvo"), "1 lance salvo")
+        self.assertEqual(descrever_lances(6, "salvo"), "3 lances salvos")
+        self.assertEqual(descrever_lances(5), "3 lances")
+
+
 class TestInterface(unittest.TestCase):
     def setUp(self):
         self._pasta = tempfile.TemporaryDirectory()
@@ -87,6 +103,9 @@ class TestInterface(unittest.TestCase):
         self.assertEqual(self.app.jogo.lances_san()[0], "e4")
         self._esperar(lambda: self.app.jogo.total_meios_lances() == 2)
         self.assertEqual(banco.obter_jogadas(self.app.partida_id), self.app.jogo.lances_san())
+        self.raiz.update()
+        self.assertTrue(self.app.lbl_salvo.cget("text").startswith("Lance 1 salvo"))
+        self.assertNotIn("((", self.app.lbl_detalhes.cget("text"))
 
     def test_arrastar_peca(self):
         self.raiz.update()
