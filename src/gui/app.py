@@ -657,7 +657,7 @@ class AplicacaoXadrez:
         messagebox.showinfo(
             "Sobre",
             "IA em Xadrez\n"
-            "Projeto Interdisciplinar II, UNIFASIPE (2026)\n"
+            "Projeto Interdisciplinar III, UNIFASIPE (2026)\n"
             "Haru Oltramari Ludwig\n\n"
             "Interface: Tkinter\nRegras: python-chess\n"
             f"Motores de IA registrados: {len(MOTORES)}",
