@@ -24,10 +24,11 @@ class TestCompatibilidade(unittest.TestCase):
         self.assertTrue(jogo.executar_movimento("e4"))
         self.assertFalse(jogo.executar_movimento("e4"))
 
-    def test_listar_movimentos_sem_duplicatas_na_promocao(self):
+    def test_destinos_sem_duplicatas_na_promocao(self):
+        # as quatro promoções (dama, torre, bispo, cavalo) aparecem como um destino só
         jogo = ChessBoardCore()
         jogo.board.set_fen("8/P7/8/8/8/8/8/K6k w - - 0 1")
-        self.assertEqual(jogo.listar_movimentos_legais("a7"), ["a8"])
+        self.assertEqual(jogo.destinos_legais("a7"), [("a8", False)])
 
 
 class TestMovimentos(unittest.TestCase):

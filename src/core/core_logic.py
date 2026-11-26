@@ -112,10 +112,6 @@ class ChessBoardCore:
         except ValueError:
             return False
 
-    def listar_movimentos_legais(self, coordenada_algebraica):
-        """Casas de destino da peça, sem repetir as quatro opções de promoção."""
-        return [destino for destino, _ in self.destinos_legais(coordenada_algebraica)]
-
     def vez(self) -> str:
         return _NOME_COR[self.board.turn]
 
