@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from .aleatorio import MotorAleatorio
-from .base import JogadaMotor, MotorDecisao
+from .base import TEMPO_LIMITE_PADRAO, JogadaMotor, MotorDecisao
+from .minimax import MotorMinimaxDificil, MotorMinimaxFacil, MotorMinimaxMedio
 
+# A ordem é a da lista na interface; o primeiro é o padrão do diálogo de nova partida.
 MOTORES: dict[str, type[MotorDecisao]] = {
+    MotorMinimaxFacil.chave: MotorMinimaxFacil,
+    MotorMinimaxMedio.chave: MotorMinimaxMedio,
+    MotorMinimaxDificil.chave: MotorMinimaxDificil,
     MotorAleatorio.chave: MotorAleatorio,
 }
 
@@ -22,4 +27,5 @@ def motor_por_nome(nome: str) -> type[MotorDecisao] | None:
     return None
 
 
-__all__ = ["MOTORES", "JogadaMotor", "MotorDecisao", "criar_motor", "motor_por_nome"]
+__all__ = ["MOTORES", "TEMPO_LIMITE_PADRAO", "JogadaMotor", "MotorDecisao", "criar_motor",
+           "motor_por_nome"]

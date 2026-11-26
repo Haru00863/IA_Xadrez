@@ -8,6 +8,10 @@ from typing import Optional
 
 import chess
 
+# Tempo máximo, em segundos, que um motor tem para escolher o lance. A interface
+# e o script de torneio usam este mesmo valor.
+TEMPO_LIMITE_PADRAO = 10.0
+
 
 @dataclass(frozen=True)
 class JogadaMotor:

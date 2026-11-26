@@ -16,7 +16,7 @@ from tkinter import messagebox, ttk
 from typing import Optional
 
 from src.core.core_logic import BRANCAS, PRETAS, ChessBoardCore, FimDeJogo, ResultadoJogada
-from src.engine import MOTORES, MotorDecisao, criar_motor, motor_por_nome
+from src.engine import MOTORES, TEMPO_LIMITE_PADRAO, MotorDecisao, criar_motor, motor_por_nome
 from src.persistence import database_manager as banco
 
 from . import tema
@@ -27,7 +27,7 @@ from .historico import (JanelaHistorico, criar_lista_lances, descrever_lances, f
 from .sprites import Sprites
 from .tabuleiro import TabuleiroCanvas
 
-TEMPO_LIMITE_IA = 10.0  # segundos
+TEMPO_LIMITE_IA = TEMPO_LIMITE_PADRAO  # segundos
 ATRASO_MINIMO_IA = 0.45  # para o lance da IA não aparecer instantâneo
 INTERVALO_IA_MS = 50  # frequência de consulta da fila da IA
 

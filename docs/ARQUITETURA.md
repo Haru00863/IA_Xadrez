@@ -22,7 +22,7 @@ A dependência só aponta para um lado:
 - A IA (engine) não conhece o árbitro, a interface nem o banco. Ela recebe um `chess.Board` e devolve um `chess.Move`.
 - A súmula (persistence) não conhece nada de xadrez. Ela guarda textos (`"e4"`, `"Nf3"`) e números.
 
-Assim, o motor de IA, a interface ou o banco podem ser trocados sem reescrever as outras partes. O Minimax, por exemplo, vai substituir o motor aleatório sem mudanças na interface.
+Assim, o motor de IA, a interface ou o banco podem ser trocados sem reescrever as outras partes. O Minimax, por exemplo, entrou ao lado do motor aleatório sem mudanças na interface.
 
 ---
 
@@ -39,8 +39,10 @@ IA-Xadrez/
 │   ├── core/
 │   │   └── core_logic.py         ChessBoardCore: regras, validação, fim de jogo
 │   ├── engine/
-│   │   ├── base.py               contrato MotorDecisao + JogadaMotor
-│   │   ├── aleatorio.py          MotorAleatorio (provisório)
+│   │   ├── base.py               contrato MotorDecisao + JogadaMotor, TEMPO_LIMITE_PADRAO
+│   │   ├── aleatorio.py          MotorAleatorio (linha de base)
+│   │   ├── avaliacao.py          funções de avaliação (material e tabelas de posição)
+│   │   ├── minimax.py            Busca (Minimax/Alfa-Beta) + MotorMinimax e níveis
 │   │   └── __init__.py           registro MOTORES (lista de motores da GUI)
 │   ├── persistence/
 │   │   ├── init_db.sql           esquema PARTIDA / JOGADA
@@ -56,14 +58,17 @@ IA-Xadrez/
 │       └── assets/pecas/         peças em PNG, 14 tamanhos
 │
 ├── tests/
-│   ├── test_core.py              regras do jogo (22 testes)
-│   ├── test_persistencia_motor.py banco e motor (5 testes)
-│   └── test_gui.py               integração com a interface (6 testes)
+│   ├── test_core.py              regras do jogo
+│   ├── test_persistencia_motor.py banco e registro de motores
+│   ├── test_minimax.py           avaliação, Alfa-Beta, quiescência, aprofundamento iterativo
+│   └── test_gui.py               integração com a interface
 │
 ├── scripts/
+│   ├── torneio.py                torneio entre motores (Stockfish como juiz)
+│   ├── livro_aberturas.py        50 aberturas reais para o torneio (--livro)
 │   └── gerar_sprites_pecas.py    gera assets/pecas (só desenvolvimento)
 │
-└── docs/                         documentação técnica
+└── docs/                         documentação técnica (docs/resultados/, gerada pelo torneio, não é versionada)
 ```
 
 ---
@@ -91,6 +96,8 @@ flowchart TD
         reg["__init__.py<br/>MOTORES"]
         base["base.py<br/>MotorDecisao"]
         ale["aleatorio.py"]
+        mm["minimax.py"]
+        av["avaliacao.py"]
     end
 
     subgraph pers["Persistência (src/persistence)"]
@@ -106,6 +113,8 @@ flowchart TD
     hist --> db
     dlg --> reg
     reg --> ale --> base
+    reg --> mm --> base
+    mm --> av
     db --> sql
     cl --> chess["python-chess"]
     base --> chess
@@ -118,9 +127,11 @@ Dependências por módulo:
 | Módulo | Importa | É importado por | Usa python-chess? | Usa Tkinter? |
 | --- | --- | --- | --- | --- |
 | `core/core_logic.py` | `chess` | `gui/app.py`, `gui/historico.py`, testes | Sim | Não |
-| `engine/base.py` | `chess` | `engine/aleatorio.py`, `engine/__init__.py` | Sim (tipos `Board` e `Move`) | Não |
+| `engine/base.py` | `chess` | `engine/aleatorio.py`, `engine/minimax.py`, `engine/__init__.py` | Sim (tipos `Board` e `Move`) | Não |
 | `engine/aleatorio.py` | `engine/base.py` | `engine/__init__.py` | Sim | Não |
-| `engine/__init__.py` | `aleatorio`, `base` | `gui/app.py`, `gui/dialogos.py`, testes | Não | Não |
+| `engine/avaliacao.py` | `chess` | `engine/minimax.py`, testes | Sim | Não |
+| `engine/minimax.py` | `engine/base.py`, `engine/avaliacao.py` | `engine/__init__.py`, testes | Sim | Não |
+| `engine/__init__.py` | `aleatorio`, `minimax`, `base` | `gui/app.py`, `gui/dialogos.py`, `scripts/torneio.py`, testes | Não | Não |
 | `persistence/database_manager.py` | `sqlite3` | `gui/app.py`, `gui/historico.py`, testes | Não | Não |
 | `gui/app.py` | core, engine, persistence, módulos da GUI | `main.py`, `tests/test_gui.py` | Não | Sim |
 | `gui/tabuleiro.py` | `tema`, `sprites` | `app.py`, `historico.py` | Não | Sim |
@@ -272,64 +283,94 @@ Passo a passo no código:
 
 | Mudança | Arquivo | Onde |
 | --- | --- | --- |
-| Criar o motor Minimax | `src/engine/minimax.py` (novo) + `src/engine/__init__.py` | Ver seção 8 |
+| Trocar a avaliação do Minimax | `src/engine/avaliacao.py` | Ver seção 8 |
+| Criar um nível novo do Minimax | `src/engine/minimax.py` + `src/engine/__init__.py` | Ver seção 8 |
 | Mudar uma mensagem de lance ilegal | `src/core/core_logic.py` | `explicar_ilegalidade`, `_explicar_roque` |
 | Mudar uma regra de fim de jogo | `src/core/core_logic.py` | `estado_fim`, `motivo_empate_reivindicavel` |
 | Mudar cores, fontes ou estilo de botões | `src/gui/tema.py` | constantes no topo e `aplicar_estilo` |
 | Mudar o desenho do tabuleiro (destaques, coordenadas) | `src/gui/tabuleiro.py` | `_redesenhar`, `_cor_casa` |
 | Mudar o painel lateral ou os botões | `src/gui/app.py` | `_montar_interface`, `CartaoJogador` |
 | Adicionar um atalho de teclado | `src/gui/app.py` + `src/gui/dialogos.py` | `_registrar_atalhos` e a lista `ATALHOS` |
-| Mudar o limite de 10 s da IA | `src/gui/app.py` | `TEMPO_LIMITE_IA` |
+| Mudar o limite de 10 s da IA | `src/engine/base.py` | `TEMPO_LIMITE_PADRAO` (vale para a interface e o torneio) |
 | Mudar o esquema do banco | `src/persistence/init_db.sql` + `database_manager.py` | atualizar também o DER da documentação |
 | Trocar o desenho das peças | `scripts/gerar_sprites_pecas.py` | o script gera um novo `assets/pecas/` |
 
 ---
 
-## 8. Adicionando o Minimax
+## 8. Motor Minimax
 
-Só dois arquivos mudam; a interface, o core e o banco continuam iguais.
+O motor fica dividido em duas peças independentes:
 
-`src/engine/minimax.py` (esqueleto):
+| Peça | Arquivo | Papel |
+| --- | --- | --- |
+| Busca | `src/engine/minimax.py` (`Busca`, `MotorMinimax`) | Monta a árvore de lances e escolhe o melhor |
+| Avaliação | `src/engine/avaliacao.py` (`Avaliador`, `avaliar_material`, `avaliar_posicional`) | Dá nota a uma posição parada |
 
-```python
-import chess
+A busca recebe a avaliação como parâmetro (`MotorMinimax(avaliador=...)`). Melhorar a heurística ou usar uma avaliação treinada é trocar só essa função; a busca não muda.
 
-from .base import JogadaMotor, MotorDecisao
+### 8.1 Convenções
 
+- Nota sempre na perspectiva das **brancas**, em peões: positivo = brancas melhor.
+- Brancas são o jogador MAX (maximizam a nota); pretas são o MIN (minimizam).
+- Mate vale `±(MATE - ply)`, com `MATE = 1000` e `ply` = distância até a raiz. Assim o motor prefere o mate mais rápido e adia o próprio.
+- Afogamento, material insuficiente e regra dos 50 lances valem 0.
+- Repetição: uma posição que já apareceu (na partida ou na linha da busca) vale 0. Quem está ganhando evita o vaivém e quem está perdendo procura a repetição. A raiz não conta, porque é a posição atual. Funciona porque `copia_tabuleiro()` mantém o histórico de lances.
 
-class MotorMinimax(MotorDecisao):
-    chave = "minimax"
-    nome = "Minimax (profundidade 3)"
-    descricao = "Busca Minimax com poda Alfa-Beta."
+### 8.2 Algoritmo
 
-    def escolher_jogada(self, tabuleiro: chess.Board, tempo_limite: float) -> JogadaMotor:
-        melhor_lance, melhor_nota = None, float("-inf")
-        for lance in tabuleiro.legal_moves:
-            tabuleiro.push(lance)               # pode alterar: é uma cópia
-            nota = -self._negamax(tabuleiro, 2, float("-inf"), float("inf"))
-            tabuleiro.pop()
-            if nota > melhor_nota:
-                melhor_lance, melhor_nota = lance, nota
-        return JogadaMotor(melhor_lance, avaliacao=melhor_nota)
+- `Busca.minimax`: Minimax puro, sem poda. Serve de referência nos testes e para explicar o conceito.
+- `Busca.alfa_beta`: o mesmo Minimax com poda Alfa-Beta. `alfa` é o melhor que MAX já tem garantido, `beta` o melhor de MIN; quando `alfa >= beta` os lances restantes do nó são cortados. Os testes `TestAlfaBeta` e `TestQuiescencia` confirmam que as versões com e sem poda devolvem a mesma nota, com menos nós na versão podada. Com quiescência, a versão sem poda cresce exponencialmente em posições com muitas capturas, então esses testes usam posições com poucas trocas.
+- `Busca.quiescencia`: chamada quando a profundidade acaba. Em vez de avaliar direto, continua só com capturas até a posição ficar "quieta". Isso evita o **efeito horizonte**: avaliar no meio de uma troca (ex.: "dama come peão" parece +1, mas o peão que retoma a dama fica além da profundidade).
+  - **Stand pat:** fora de xeque, quem joga pode "ficar parado". A nota da posição como está já é uma opção, e uma captura só é escolhida se for melhor que ela.
+  - **Em xeque** não existe essa opção: a quiescência olha todas as respostas ao xeque. Assim ela também enxerga um mate no fim de uma troca.
+  - Não tem limite de profundidade: termina porque cada captura tira uma peça do tabuleiro.
+  - `Busca.quiescencia_pura` é a mesma ideia sem poda, usada pelo `minimax` puro e como referência nos testes.
+  - `Busca(quiescencia=False)` ou `MotorMinimax(quiescencia=False)` desliga a quiescência, para comparar.
+- `Busca.ordenar`: capturas primeiro, em ordem **MVV-LVA** (vítima mais valiosa primeiro e, entre vítimas iguais, o atacante mais barato: `exd5` antes de `Qxd5`). Não muda o resultado; só faz a poda cortar mais cedo.
+- `Busca.nos` conta os nós visitados; o motor mostra esse número em `JogadaMotor.detalhes`.
+- **Aprofundamento iterativo** (`MotorMinimax.escolher_jogada`): o motor busca com profundidade 1, depois 2, 3... até a profundidade máxima do nível, e devolve o melhor lance da última rodada **completa**.
+  - **Prazo:** a cada 1024 nós a busca olha o relógio (`Busca.contar_no`). Se passou de 90% do `tempo_limite`, ela é interrompida com a exceção `TempoEsgotado`, os lances que ficaram no tabuleiro são desfeitos e vale a rodada anterior. A profundidade 1 sempre termina, para sempre haver um lance.
+  - **Rodada nova só com tempo:** se já gastou metade do tempo, não começa outra, porque a próxima costuma custar várias vezes a anterior.
+  - **Ordem:** em cada rodada, o melhor lance da anterior é testado primeiro. Isso faz a poda cortar mais cedo, e na prática as rodadas menores quase se pagam: o difícil ficou mais rápido do que com profundidade fixa.
+  - **Mate:** se a rodada de profundidade d achou um mate a até d meios-lances, a busca para, porque ir mais fundo não acha um mais curto.
+  - **Por que importa para o treino:** uma avaliação aprendida será mais lenta que as tabelas. Com o prazo, o motor respeita o `tempo_limite` com qualquer avaliador e só alcança uma profundidade menor.
+  - **Reprodutibilidade:** com 10 s, os níveis atuais terminam a profundidade máxima em praticamente toda posição. O tempo só age como rede de segurança, e os torneios dão sempre o mesmo resultado. Só uma posição que estourasse o prazo poderia variar de uma máquina para outra. `parou_por_tempo` marca quando isso acontece (parar mais cedo por ter achado mate não conta), e o torneio soma esses lances na coluna "Prof. incompleta": com 0, o resultado não dependeu da velocidade da máquina.
 
-    def _negamax(self, tabuleiro, profundidade, alfa, beta):
-        ...  # busca com poda Alfa-Beta + função de avaliação
-```
+### 8.3 Avaliação
 
-`src/engine/__init__.py`: registrar a classe.
+`avaliar_posicional` é a avaliação padrão do motor: material + **tabelas de posição** (piece-square tables, valores da "Simplified Evaluation Function" de Tomasz Michniewski). Cada peça ganha um bônus ou penalidade, em centésimos de peão, conforme a casa: cavalo e bispo no centro, peão avançado, torre na 7ª fileira e rei rocado valem mais. As tabelas estão escritas do ponto de vista das brancas (a8 primeiro); para as brancas a casa é espelhada com `chess.square_mirror`, e para as pretas o índice direto já é o espelho. A conta é feita em inteiros e dividida por 100 no fim, para a nota de uma posição e a da posição espelhada serem exatamente opostas.
 
-```python
-from .minimax import MotorMinimax
+Para ser rápida, `avaliar_posicional` não usa `piece_map()`, que cria um objeto por peça a cada chamada. Ela percorre os *bitboards* do python-chess (um inteiro de 64 bits por tipo e cor de peça) e soma valores já pré-calculados em `VALOR_CASA` (material + bônus, por cor, tipo e casa). O resultado é idêntico à soma peça a peça (conferido em 2000 posições aleatórias) e cerca de 30% mais rápido no motor, porque a avaliação é chamada dezenas de milhares de vezes por lance.
 
-MOTORES = {
-    MotorAleatorio.chave: MotorAleatorio,
-    MotorMinimax.chave: MotorMinimax,
-}
-```
+`avaliar_material` continua disponível (`MotorMinimax(avaliador=avaliar_material)`), útil para comparar as duas no TCC.
 
-Na próxima abertura, "Minimax (profundidade 3)" aparece no diálogo de nova partida.
+Sem as tabelas, todos os lances sem captura empatavam em 0 e o motor jogava sempre o primeiro da lista. O resultado era o vaivém de cavalo e torre (`Nh6`, `Ng8`, `Rg8`, `Rh8`...).
 
----
+### 8.4 Níveis
+
+O registro cria motores sem argumentos, então cada nível é uma subclasse que só muda a profundidade máxima:
+
+| Classe | Chave | Profundidade máxima |
+| --- | --- | --- |
+| `MotorMinimaxFacil` | `minimax_facil` | 2 |
+| `MotorMinimaxMedio` | `minimax_medio` | 3 |
+| `MotorMinimaxDificil` | `minimax_dificil` | 4 |
+
+Tempo por lance com quiescência e aprofundamento iterativo (Ryzen 5 7600):
+
+| Posição | Fácil | Médio | Difícil |
+| --- | --- | --- | --- |
+| Inicial | 0,00 s | 0,01 s | 0,08 s |
+| Meio-jogo calmo | 0,04 s | 0,55 s | 1,4 s |
+| Meio-jogo com muitas trocas possíveis | 0,1 s | 0,9 s | 5,7 s |
+
+A quiescência deixou o difícil bem mais lento (antes ficava em até ~1 s). Se uma posição passar do prazo, o aprofundamento iterativo garante a resposta dentro do limite, com a profundidade 3.
+
+### 8.5 Limitações conhecidas (próximos passos)
+
+- O rei usa só a tabela de meio-jogo: no final ele não procura o centro.
+- Repetição em posição igual: a nota 0 da repetição faz o motor aceitar o vaivém quando acha que a posição está equilibrada. A solução usual é o *contempt* (empate levemente ruim para o lado mais forte).
+- Sem tabela de transposição: posições iguais, alcançadas por ordens de lances diferentes, são analisadas de novo.
 
 ## 9. Regras de dependência
 

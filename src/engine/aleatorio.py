@@ -1,4 +1,4 @@
-"""Motor provisório: escolhe um lance legal ao acaso até o Minimax ficar pronto."""
+"""Motor aleatório: escolhe um lance legal ao acaso. Serve de linha de base nas comparações."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ from .base import JogadaMotor, MotorDecisao
 
 class MotorAleatorio(MotorDecisao):
     chave = "aleatorio"
-    nome = "Aleatório (provisório)"
-    descricao = "Escolhe qualquer lance legal ao acaso. Substituto até o Minimax ficar pronto."
+    nome = "Aleatório"
+    descricao = "Linha de base: escolhe qualquer lance legal ao acaso."
 
     def __init__(self, semente: Optional[int] = None):
         # com semente fixa os testes ficam reproduzíveis

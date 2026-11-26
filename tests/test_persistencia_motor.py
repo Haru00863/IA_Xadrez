@@ -24,7 +24,7 @@ class TestPersistencia(unittest.TestCase):
         self._pasta.cleanup()
 
     def test_ciclo_completo_de_uma_partida(self):
-        pid = banco.iniciar_nova_partida("Aleatório (provisório)")
+        pid = banco.iniciar_nova_partida("Aleatório")
         banco.salvar_jogada(pid, "e4", None)
         banco.salvar_jogada(pid, "e5", "0.35")
         self.assertEqual(banco.obter_jogadas(pid), ["e4", "e5"])
