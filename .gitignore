@@ -4,3 +4,6 @@ __pycache__/
 
 # Banco SQLite gerado em tempo de execucao (dados locais de cada maquina)
 src/persistence/xadrez.db
+
+# Resultados dos torneios (scripts/torneio.py): ficam só na máquina de quem rodou
+docs/resultados/

@@ -9,8 +9,9 @@ python-chess, interface gráfica em Tkinter e histórico de partidas em SQLite.
 - Interface gráfica funcional: partidas contra o computador ou entre duas pessoas, histórico,
   revisão lance a lance e retomada de partidas interrompidas.
 - Regras completas (roque, en passant, promoção, xeque-mate, afogamento, empates).
-- O motor de IA atual é provisório e escolhe lances aleatórios. O Minimax com poda Alfa-Beta
-  está em desenvolvimento e vai substituí-lo sem mudanças na interface.
+- Motor Minimax com poda Alfa-Beta, busca de quiescência e aprofundamento iterativo (respeita
+  o limite de 10 s por lance), em três níveis (fácil, médio e difícil), avaliando material e
+  posição das peças. Um motor aleatório fica disponível como linha de base para comparação.
 
 ## Requisitos
 
@@ -55,6 +56,7 @@ A partir da pasta raiz do projeto, com o ambiente virtual ativo:
 | --- | --- |
 | Interface gráfica | `python main.py` |
 | Testes | `python -m unittest discover -s tests -v` |
+| Torneio entre os motores | `python scripts/torneio.py` |
 
 Os testes da interface precisam de uma tela; sem ela, são pulados.
 
@@ -80,6 +82,36 @@ Os testes da interface precisam de uma tela; sem ela, são pulados.
 Cada lance é salvo no banco assim que é feito. Se o programa for fechado no meio de uma
 partida, ele oferece continuar de onde parou na próxima vez que abrir.
 
+## Torneio entre os motores
+
+`scripts/torneio.py` faz os motores jogarem todos contra todos. Cada partida começa de uma
+abertura curta, jogada duas vezes com as cores trocadas: por padrão os primeiros lances são
+sorteados (com semente fixa, para o resultado ser reproduzível); com `--livro`, vêm de 50
+aberturas reais (`scripts/livro_aberturas.py`). O relatório sai em tabelas Markdown, com a
+configuração usada (inclusive o commit do código), vitórias, empates, derrotas e tempo médio por
+lance.
+
+Com o [Stockfish](https://stockfishchess.org/) instalado (no Arch/CachyOS:
+`sudo pacman -S stockfish`), ele entra no torneio de duas formas:
+
+- como adversário, com força reduzida (`--sf-niveis 0 5`: Skill Level de 0 a 20);
+- como juiz: analisa cada lance dos motores e mede a **concordância** (% de lances iguais ao
+  melhor lance do Stockfish) e o **ACPL** (perda média em centipeões por lance; quanto menor,
+  melhor).
+
+| Opção | Para quê |
+| --- | --- |
+| `--aberturas N` | aberturas por confronto (padrão 2 sorteadas; cada uma vira 2 partidas) |
+| `--livro` | usa as 50 aberturas reais do livro (com `--aberturas N`, só as N primeiras) |
+| `--semente N` | muda o sorteio das aberturas (padrão 2026) |
+| `--motores CHAVE ...` | escolhe os motores (ex.: `minimax_facil minimax_dificil`) |
+| `--pgn arquivo.pgn` | salva as partidas; dá para abrir no Lichess |
+| `--processos N` | joga N partidas ao mesmo tempo (ex.: 6, um por núcleo físico) |
+| `--ao-vivo [PAUSA]` | desenha o tabuleiro no terminal a cada lance (sempre 1 partida por vez) |
+| `--sf-niveis` (vazio) | sem Stockfish adversário; ele continua só como juiz |
+| `--sem-stockfish` | ignora o Stockfish mesmo se estiver instalado |
+| `--stockfish CAMINHO` | executável fora do PATH |
+
 ## Estrutura
 
 ```
@@ -89,7 +121,7 @@ src/engine/          motores de IA
 src/persistence/     banco de dados SQLite
 src/gui/             interface gráfica
 tests/               testes automatizados
-scripts/             gerador das imagens das peças
+scripts/             torneio entre motores e gerador das imagens das peças
 docs/                documentação técnica
 ```
 
